@@ -1,0 +1,30 @@
+services:
+  signal-mcp:
+    build: .
+    image: signal-mcp:latest
+    container_name: signal-mcp
+    restart: unless-stopped
+    # Linux-only. Gives the container access to the host's
+    # 127.0.0.1:8080 signal-cli daemon without exposing it on the LAN.
+    # If this is ever moved to Docker Desktop on macOS/Windows, switch
+    # to a bridge network and set SIGNAL_RPC_URL=http://host.docker.internal:8080/api/v1/rpc
+    # plus `extra_hosts: ["host.docker.internal:host-gateway"]`.
+    network_mode: host
+    env_file:
+      - .env
+    volumes:
+      # Persistent inbox of replies. NOT signal-cli's data dir — we are
+      # only an HTTP client of the host daemon, no Signal keys live here.
+      - signal-mcp-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-X", "POST",
+             "-H", "Content-Type: application/json",
+             "-d", "{\"jsonrpc\":\"2.0\",\"id\":\"hc\",\"method\":\"version\"}",
+             "http://127.0.0.1:8080/api/v1/rpc"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  signal-mcp-data:

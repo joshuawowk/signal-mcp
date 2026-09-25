@@ -1,0 +1,13 @@
+{
+  "_comment": "Merge this object's `mcpServers` entry into ~/.config/Claude/claude_desktop_config.json. The signal-mcp container must be running (`docker compose up -d` from ~/Repos/signal-mcp). Claude Desktop spawns the MCP server stdio process inside the running container per session. The `sg docker -c \"exec docker exec ...\"` wrapper is required on Linux because Claude Desktop sessions started before jwowk was added to the `docker` group don't have it as a supplementary group; `sg` runs the command under that group. The `exec` inside the -c string replaces the spawned bash with docker exec so SIGTERM propagates cleanly to the MCP server when Claude Desktop closes the connection.",
+  "mcpServers": {
+    "signal-josh": {
+      "command": "sg",
+      "args": [
+        "docker",
+        "-c",
+        "exec docker exec -i signal-mcp python3 /app/server.py"
+      ]
+    }
+  }
+}
