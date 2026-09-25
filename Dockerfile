@@ -3,6 +3,9 @@
 # subscriber is the foreground process, the MCP server is invoked
 # per-session via `docker exec -i ... python3 /app/server.py`.
 FROM python:3.12-slim
+LABEL org.opencontainers.image.source="https://github.com/joshuawowk/signal-mcp" \
+      org.opencontainers.image.description="MCP server + inbox subscriber fronting a signal-cli JSON-RPC daemon" \
+      org.opencontainers.image.licenses="MIT"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
