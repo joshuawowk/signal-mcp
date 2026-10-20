@@ -1,14 +1,63 @@
 # signal-mcp
 
-MCP server + reply subscriber that lets any Claude session message
-Josh on Signal. Fronts the host's existing `signal-cli` daemon
-(`signal-cli-daemon.service`, account `+14013752241`) without
-re-registering or bind-mounting its data directory.
+[![Release](https://img.shields.io/github/v/release/joshuawowk/signal-mcp)](https://github.com/joshuawowk/signal-mcp/releases)
+[![License: MIT](https://img.shields.io/github/license/joshuawowk/signal-mcp)](LICENSE)
+
+An unofficial [MCP](https://modelcontextprotocol.io) integration for Signal via
+[signal-cli](https://github.com/AsamK/signal-cli). It lets an MCP client send
+you Signal messages (task-done pings, blocking questions, permission requests)
+and read your replies.
+
+**Requirements:** a running `signal-cli` JSON-RPC daemon (`signal-cli daemon
+--http ...`, plus `--tcp ...` if you want replies) and a Signal phone number
+already registered with signal-cli. This project does not register numbers, run
+the daemon, or talk to Signal's servers itself; it is only a client of your
+daemon. It is not affiliated with or endorsed by Signal Messenger or the Signal
+Foundation.
+
+It consists of an MCP server (`app/server.py`) and an optional reply
+subscriber (`app/subscriber.py`) that fronts the existing `signal-cli` daemon
+without re-registering or bind-mounting its data directory.
+
+## Install
+
+The image is published at `ghcr.io/joshuawowk/signal-mcp` and listed in the
+[MCP Registry](https://registry.modelcontextprotocol.io) as
+`io.github.joshuawowk/signal-mcp`. Run with no arguments, the container starts
+the reply subscriber (the long-running mode used by the Compose deployment
+below); the MCP server is started explicitly.
+
+### MCP client over stdio (send-only)
+
+```bash
+docker run -i --rm \
+  --add-host host.docker.internal:host-gateway \
+  -e SIGNAL_SENDER=+15555550100 \
+  -e SIGNAL_DEFAULT_RECIPIENT=+15555550101 \
+  -e SIGNAL_RPC_URL=http://host.docker.internal:8080/api/v1/rpc \
+  ghcr.io/joshuawowk/signal-mcp:latest python3 /app/server.py --stdio
+```
+
+Notes:
+
+- On Linux you can instead use `--network host` and drop the `--add-host` and
+  `SIGNAL_RPC_URL` settings (the default `127.0.0.1:8080` then reaches your
+  daemon).
+- With a bridge network the daemon must be reachable from the container. A
+  daemon bound only to `127.0.0.1` is not. The signal-cli HTTP endpoint is
+  unauthenticated: do not expose it beyond a trusted interface.
+- A standalone stdio container has no subscriber, so replies are not collected:
+  `signal_check_replies` returns nothing and `signal_health` reports the
+  receive path as down. For replies, use the Compose deployment below.
+
+### Compose deployment (send and receive replies)
+
+See [Setup](#setup).
 
 ## Architecture
 
 ```
-Claude Desktop ──stdio──> docker exec ──> python3 /app/server.py ─┐
+MCP client ──stdio──> docker exec ──> python3 /app/server.py ─┐
                                                                   │ HTTP JSON-RPC
 host: signal-cli-daemon.service  ◀── 127.0.0.1:8080 (synchronous)─┤  (send, version)
                                   ◀── 127.0.0.1:7583 (TCP stream)─┤  (receive notifications)
@@ -35,8 +84,8 @@ host: signal-cli-daemon.service  ◀── 127.0.0.1:8080 (synchronous)─┤  (
 ## Setup
 
 ```bash
-cd ~/Repos/signal-mcp
-cp .env.example .env       # edit if you need to change defaults
+git clone https://github.com/joshuawowk/signal-mcp && cd signal-mcp
+cp .env.example .env       # set SIGNAL_SENDER and SIGNAL_DEFAULT_RECIPIENT
 docker compose build
 docker compose up -d
 docker compose logs -f signal-mcp   # watch the subscriber start up
@@ -50,13 +99,13 @@ docker exec signal-mcp python3 -c \
 # expected: 0.14.3
 ```
 
-## Register the MCP server with Claude Desktop
+### Register the MCP server with Claude Desktop
 
 Merge `claude_desktop_config.snippet.json` into
 `~/.config/Claude/claude_desktop_config.json` under `mcpServers`:
 
 ```json
-"signal-josh": {
+"signal": {
   "command": "sg",
   "args": ["docker", "-c", "exec docker exec -i signal-mcp python3 /app/server.py"]
 }
@@ -68,7 +117,7 @@ Restart Claude Desktop.
 
 `sg docker -c "…"` runs the command under the `docker` supplementary
 group. This is required when the Claude Desktop process was started
-before `jwowk` was added to the `docker` group — existing sessions
+before your user was added to the `docker` group — existing sessions
 inherit a stale supplementary-group list and `docker exec` returns
 `permission denied while trying to connect to the docker API at
 unix:///var/run/docker.sock`, which surfaces in Claude Desktop's logs
@@ -81,7 +130,7 @@ Desktop reach the MCP server cleanly when the connection closes.
 If you log out + back in (or reboot), all new processes inherit the
 `docker` group and the wrapper isn't strictly needed — but it's
 harmless to keep, and it makes the config portable across hosts where
-the group situation may vary. The `signal-josh` server will appear in the
+the group situation may vary. The `signal` server will appear in the
 MCP server list and its tools (`signal_send_message`,
 `signal_send_question`, `signal_send_permission_request`,
 `signal_check_replies`, `signal_health`) become available to any
@@ -89,19 +138,16 @@ session.
 
 ## Install the companion skill
 
-The skill lives in `skill/SKILL.md`. Symlink it into the user skills
-directory so it's discovered alongside Josh's other skills:
+An example agent skill lives in `skill/SKILL.md` (written for one person's
+setup; adapt the name and wording). Copy or symlink it into your agent's
+skills directory, for example:
 
 ```bash
-SKILLS=~/.config/Claude/local-agent-mode-sessions/skills-plugin/60ec4dd2-88cd-4679-a53c-1593176d1ac9/58636bed-2152-4b76-8f90-55b982ef8e3d/skills
-mkdir -p "$SKILLS/signal-josh"
-ln -sf ~/Repos/signal-mcp/skill/SKILL.md "$SKILLS/signal-josh/SKILL.md"
+mkdir -p <your-skills-dir>/signal
+ln -sf "$PWD/skill/SKILL.md" <your-skills-dir>/signal/SKILL.md
 ```
 
-(That path is session-bound, so an alternative is to copy the skill
-folder there directly and update it from the repo whenever it changes.)
-
-## End-to-end test from a future Claude session
+## End-to-end test from a Claude session
 
 ```
 Use signal_health to confirm the daemon is up, then signal_send_message
@@ -110,8 +156,8 @@ session_id="signal-mcp-test-001". Then wait 30 seconds and call
 signal_check_replies with session_id="signal-mcp-test-001".
 ```
 
-Josh replies with anything; the next `signal_check_replies` call
-should return his message.
+Reply with anything from your phone; the next `signal_check_replies` call
+should return your message.
 
 ## Tools
 
@@ -133,9 +179,10 @@ should return his message.
 
 | Variable | Meaning |
 | --- | --- |
-| `SIGNAL_SENDER` | E.164 of the registered signal-cli account. Default: `+14013752241`. |
-| `SIGNAL_DEFAULT_RECIPIENT` | E.164 to ping by default. Default: Josh's number. |
-| `SIGNAL_RPC_URL` | Daemon endpoint as seen from the container. With `network_mode: host`, `127.0.0.1:8080` works. |
+| `SIGNAL_SENDER` | E.164 of the registered signal-cli account. Required. |
+| `SIGNAL_DEFAULT_RECIPIENT` | E.164 to ping by default. Required. |
+| `SIGNAL_RPC_URL` | Daemon endpoint as seen from the container. Default `http://127.0.0.1:8080/api/v1/rpc`; with `network_mode: host`, that works. |
+| `SIGNAL_TCP_HOST` / `SIGNAL_TCP_PORT` | Daemon TCP stream for receive notifications. Defaults `127.0.0.1` / `7583`. |
 | `SIGNAL_POLL_INTERVAL` | Subscriber poll cadence in seconds. |
 | `SIGNAL_INBOX_RETENTION_DAYS` | Days of replies kept in `inbox.jsonl`. |
 | `SIGNAL_INBOX_PATH` | Inbox file path inside the container. |
@@ -161,8 +208,8 @@ next poll (errors back off up to 60 s).
   and add `extra_hosts: ["host.docker.internal:host-gateway"]`.
 - **HTTP daemon polling.** signal-cli's HTTP mode does not stream
   receive events; we poll. A TCP-mode daemon with WebSocket
-  subscription would be lower-latency, but would require Josh to
-  change his existing systemd service.
+  subscription would be lower-latency, but would require changing your
+  existing daemon service.
 - **Attachments are skipped.** The subscriber only persists text
   bodies. Reactions, typing indicators, and read receipts are
   ignored.
@@ -178,7 +225,7 @@ notifications). The unit file at
 `~/.config/systemd/user/signal-cli-daemon.service` should have:
 
 ```
-ExecStart=/usr/local/bin/signal-cli -a +14013752241 daemon --http 127.0.0.1:8080 --tcp 127.0.0.1:7583 --receive-mode on-start
+ExecStart=/usr/local/bin/signal-cli -a +15555550100 daemon --http 127.0.0.1:8080 --tcp 127.0.0.1:7583 --receive-mode on-start
 ```
 
 To apply changes:
