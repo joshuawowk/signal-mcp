@@ -65,7 +65,7 @@ Good — task done:
 Good — blocked:
 
     QUESTION [claude-2026-05-19-a7b3]
-    Which Epicor environment should I run the BAQ in — pilot or live?
+    Which environment should I run the migration in — staging or production?
 
     1) pilot.example.com
     2) live.example.com
