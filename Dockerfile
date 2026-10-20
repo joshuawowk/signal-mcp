@@ -5,7 +5,8 @@
 FROM python:3.12-slim
 LABEL org.opencontainers.image.source="https://github.com/joshuawowk/signal-mcp" \
       org.opencontainers.image.description="MCP server + inbox subscriber fronting a signal-cli JSON-RPC daemon" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      io.modelcontextprotocol.server.name="io.github.joshuawowk/signal-mcp"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

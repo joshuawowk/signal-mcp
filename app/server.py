@@ -12,6 +12,7 @@ Tools exposed:
   signal_health                - daemon version + recipient sanity
 """
 from __future__ import annotations
+import argparse
 import ast
 import json
 import os
@@ -164,7 +165,7 @@ def _last_message_at() -> str | None:
 def _send_text(text: str, recipient: str | None) -> dict[str, Any]:
     """Send a text message and return a structured result.
 
-    The host daemon is account-scoped (started with `-a +14013752241`),
+    The host daemon is account-scoped (started with `-a +15555550100`),
     so the JSON-RPC payload does NOT include an `account` field — some
     signal-cli versions reject unrecognized params.
     """
@@ -450,5 +451,15 @@ def signal_health() -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # stdio transport — Claude Desktop will spawn us via `docker exec -i`.
+    # stdio transport — spawned per session via `docker exec -i signal-mcp
+    # python3 /app/server.py`, or standalone via `docker run -i <image>
+    # python3 /app/server.py --stdio` (e.g. from an MCP Registry client).
+    parser = argparse.ArgumentParser(description="signal-mcp MCP server")
+    parser.add_argument(
+        "--stdio",
+        action="store_true",
+        help="Serve MCP over stdio (the only transport; accepted explicitly so "
+        "launchers can state the mode)",
+    )
+    parser.parse_args()
     mcp.run()
