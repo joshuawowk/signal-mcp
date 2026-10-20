@@ -1,0 +1,34 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.joshuawowk/signal-mcp",
+  "title": "Signal Messaging (via signal-cli)",
+  "description": "Send Signal messages and read replies through your own signal-cli JSON-RPC daemon (unofficial).",
+  "version": "1.0.1",
+  "repository": { "url": "https://github.com/joshuawowk/signal-mcp", "source": "github" },
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/joshuawowk/signal-mcp:1.0.1",
+      "transport": { "type": "stdio" },
+      "runtimeArguments": [
+        { "type": "positional", "value": "-i" },
+        { "type": "named", "name": "--add-host", "value": "host.docker.internal:host-gateway" }
+      ],
+      "packageArguments": [
+        { "type": "positional", "value": "python3" },
+        { "type": "positional", "value": "/app/server.py" },
+        { "type": "named", "name": "--stdio" }
+      ],
+      "environmentVariables": [
+        { "name": "SIGNAL_SENDER", "description": "E.164 number of the account registered in signal-cli (e.g. +15555550100)", "isRequired": true, "isSecret": false },
+        { "name": "SIGNAL_DEFAULT_RECIPIENT", "description": "E.164 number messaged by default; tools accept a per-call recipient override", "isRequired": true, "isSecret": false },
+        { "name": "SIGNAL_RPC_URL", "description": "signal-cli HTTP JSON-RPC endpoint as seen from the container. The server's built-in default is http://127.0.0.1:8080/api/v1/rpc (use with --network host on Linux); this listing defaults to the Docker host alias.", "isRequired": false, "default": "http://host.docker.internal:8080/api/v1/rpc", "isSecret": false },
+        { "name": "SIGNAL_TCP_HOST", "description": "signal-cli daemon TCP host, used only for the receive-path health check", "isRequired": false, "default": "127.0.0.1", "isSecret": false },
+        { "name": "SIGNAL_TCP_PORT", "description": "signal-cli daemon TCP port (daemon started with --tcp), used only for the receive-path health check", "isRequired": false, "default": "7583", "isSecret": false },
+        { "name": "SIGNAL_INBOX_PATH", "description": "Path of the replies inbox file inside the container (populated only by the subscriber process)", "isRequired": false, "default": "/data/inbox.jsonl", "isSecret": false },
+        { "name": "SIGNAL_POLL_INTERVAL", "description": "Subscriber poll cadence in seconds", "isRequired": false, "default": "3", "isSecret": false },
+        { "name": "SIGNAL_INBOX_RETENTION_DAYS", "description": "Days of replies kept in the inbox file", "isRequired": false, "default": "14", "isSecret": false }
+      ]
+    }
+  ]
+}

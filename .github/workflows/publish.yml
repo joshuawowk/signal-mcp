@@ -1,11 +1,11 @@
-name: Publish image (GHCR)
+name: Publish (GHCR + MCP Registry)
 on:
   push: { tags: ["v*"] }
   workflow_dispatch:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    permissions: { contents: read, packages: write }
+    permissions: { contents: read, packages: write, id-token: write }
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3
@@ -22,3 +22,13 @@ jobs:
           tags: |
             ghcr.io/joshuawowk/signal-mcp:${{ steps.v.outputs.v }}
             ghcr.io/joshuawowk/signal-mcp:latest
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+      - name: Sync server.json version to tag
+        run: |
+          tmp=$(mktemp); jq --arg v "${{ steps.v.outputs.v }}" '.version=$v | (.packages[]|select(.registryType=="oci")|.identifier)="ghcr.io/joshuawowk/signal-mcp:"+$v' server.json > "$tmp" && mv "$tmp" server.json
+      - name: Publish to MCP Registry (OIDC)
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
