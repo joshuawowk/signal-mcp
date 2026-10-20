@@ -1,38 +1,38 @@
 ---
-name: signal-josh
+name: signal-notify
 description: >
-  Message Josh on Signal — task-done pings, blocking questions, permission requests.
+  Message the user on Signal — task-done pings, blocking questions, permission requests.
   Use whenever the user says things like "let me know when this is done", "ping me when
-  …", "text me if you hit X", "ask Josh whether …", "I need permission before you …",
+  …", "text me if you hit X", "ask the user whether …", "I need permission before you …",
   or any phrase implying out-of-band notification on Signal. Also use proactively, with
   no prompt, when (a) a long-running task completes, (b) the agent is blocked on a
-  decision only Josh can make, or (c) the agent is about to do something irreversible
+  decision only the user can make, or (c) the agent is about to do something irreversible
   or high-impact (deletions, prod changes, spending money, sending external email).
   Routes through the `signal_send_message`, `signal_send_question`,
   `signal_send_permission_request`, `signal_check_replies`, and `signal_health` tools
-  exposed by the signal-josh MCP server. Do NOT use for general chit-chat or marketing —
+  exposed by the signal-notify MCP server. Do NOT use for general chit-chat or marketing —
   this is a notification channel, not a chat surface.
 ---
 
-# signal-josh
+# signal-notify
 
-Reach Josh on Signal when out-of-band notification is appropriate. The MCP server lives
+Reach the user on Signal when out-of-band notification is appropriate. The MCP server lives
 in `~/Repos/signal-mcp` and uses the host's existing `signal-cli` daemon (account set via
-`SIGNAL_SENDER`). Josh's personal number is preconfigured as the default recipient.
+`SIGNAL_SENDER`). The user's own number is configured as the default recipient (`SIGNAL_DEFAULT_RECIPIENT`).
 
 
 ## When to ping (decision tree)
 
 1. **Task done?** → `signal_send_message`. Use for the end of any task that ran longer
-   than a few minutes or that Josh asked to be notified about. One short paragraph:
+   than a few minutes or that the user asked to be notified about. One short paragraph:
    what ran, what came out of it, and a pointer to the file or PR.
-2. **Blocked on a question only Josh can answer?** → `signal_send_question`. Use when
+2. **Blocked on a question only the user can answer?** → `signal_send_question`. Use when
    the agent genuinely cannot proceed: ambiguous requirements, missing input, a fork
    in the plan. Include the question, the options (if there are clear ones), and any
-   context Josh needs to decide without opening Claude.
+   context the user needs to decide without opening Claude.
 3. **About to do something irreversible / high-impact?** → `signal_send_permission_request`.
    Use for deletions, production changes, spending money, sending external email, opening
-   ports, granting access, anything Josh would normally want to confirm. Then poll
+   ports, granting access, anything the user would normally want to confirm. Then poll
    `signal_check_replies` and wait for explicit YES before proceeding.
 4. **Polling for a reply** → `signal_check_replies`. Filter by `session_id` so you
    don't pick up unrelated traffic. Reasonable cadence: every 10–30 seconds for up to
@@ -44,12 +44,12 @@ in `~/Repos/signal-mcp` and uses the host's existing `signal-cli` daemon (accoun
 - **Concise.** One short paragraph. Signal previews are ~100 chars on lock screens.
 - **Lead with the verb / outcome.** "Done: migrated 1,240 rows…", "Blocked: which env…",
   "Permission: delete S3 bucket `foo`?".
-- **Include task context.** Name the project / file / ticket so Josh can act without
+- **Include task context.** Name the project / file / ticket so the user can act without
   asking back.
 - **Always pass `session_id`** if the caller has one. It's prefixed in `[brackets]`
   and lets `signal_check_replies` filter cleanly later. If no session_id is in the
   context, generate a short slug like `claude-2026-05-19-a7b3`.
-- **No emojis** unless Josh's preceding chat or the surrounding context uses them.
+- **No emojis** unless the user's preceding chat or the surrounding context uses them.
 - **No reassurances or polite chat** ("hope this helps!", "let me know if…"). Just the
   facts.
 
@@ -85,12 +85,12 @@ Good — permission:
 
 Bad:
 
-    Hey Josh just wanted to let you know the thing is done :) hope that's helpful!
+    Hey just wanted to let you know the thing is done :) hope that's helpful!
 
 ## Operational notes
 
 - Replies are pulled by a polling subscriber (the container's PID 1). Expect up to
-  ~5 s of lag between Josh's reply landing and `signal_check_replies` returning it.
+  ~5 s of lag between the user's reply landing and `signal_check_replies` returning it.
 - If `signal_health` returns `daemon_ok: false`, the host's `signal-cli-daemon.service`
-  is down. Tell Josh; he runs `systemctl --user restart signal-cli-daemon.service`.
+  is down. Tell the user; the usual fix is `systemctl --user restart signal-cli-daemon.service`.
 - Never call `signal_send_*` in a loop. One message per logical event.

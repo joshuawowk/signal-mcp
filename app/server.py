@@ -1,4 +1,4 @@
-"""signal-mcp: MCP server that lets Claude ping Josh on Signal.
+"""signal-mcp: MCP server that lets an agent message its user on Signal.
 
 Communicates with the signal-cli HTTP JSON-RPC daemon already running
 on the host. Stdio transport — invoked per Claude session via
@@ -89,11 +89,11 @@ def _coerce_options(options: Any) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 mcp = FastMCP(
-    name="signal-josh",
+    name="signal",
     instructions=(
-        "Use this server to message Josh on Signal. Default recipient is "
+        "Use this server to message the user on Signal. Default recipient is "
         "preconfigured; only pass `recipient` to override. Keep messages "
-        "concise, include enough context that Josh can act without "
+        "concise, include enough context that the user can act without "
         "opening Claude, and prefix with the session_id if the caller "
         "provides one so replies can be matched."
     ),
@@ -202,11 +202,11 @@ def signal_send_message(
     recipient: str | None = None,
     session_id: str | None = None,
 ) -> dict[str, Any]:
-    """Send a plain Signal DM to Josh (or `recipient` if overridden).
+    """Send a plain Signal DM to the user (or `recipient` if overridden).
 
     Use for task-completion pings and FYI updates that don't require a
     reply. Keep `text` under ~500 chars; include the task name and a
-    one-line result. If the caller has a session_id, pass it so Josh
+    one-line result. If the caller has a session_id, pass it so the user
     can correlate the message back to this conversation.
 
     Args:
@@ -233,16 +233,16 @@ def signal_send_question(
     recipient: str | None = None,
     session_id: str | None = None,
 ) -> dict[str, Any]:
-    """Send a blocking question to Josh.
+    """Send a blocking question to the user.
 
     Renders as: `QUESTION [session_id]\\n<question>\\n\\n1) opt1\\n2) opt2`.
-    Josh replies with the number or free text; poll `signal_check_replies`
+    The user replies with the number or free text; poll `signal_check_replies`
     afterwards to read the answer. Use when the agent genuinely cannot
     proceed without input.
 
     Args:
         question: The question text. Be specific; include enough context
-            that Josh doesn't need to open Claude to answer.
+            that the user doesn't need to open Claude to answer.
         options: Optional choices, rendered as a numbered list. Accepts a
             real list (["A", "B"]) OR a string the client may have
             serialized: a JSON array '["A","B"]', or newline- or
@@ -284,17 +284,17 @@ def signal_send_permission_request(
     recipient: str | None = None,
     session_id: str | None = None,
 ) -> dict[str, Any]:
-    """Ask Josh to approve an action before the agent proceeds.
+    """Ask the user to approve an action before the agent proceeds.
 
     Renders as: `PERMISSION [session_id]\\n<action>\\n\\nContext:\\n<context>\\n\\nReply YES / NO / details.`.
     Use for irreversible or high-impact operations: deletions, prod
-    changes, spending money, sending external email, anything Josh
+    changes, spending money, sending external email, anything the user
     would normally want to confirm.
 
     Args:
         action: One-line description of what the agent wants to do.
         context: Why, scope, and blast radius. Include enough detail
-            that Josh can decide without asking follow-ups.
+            that the user can decide without asking follow-ups.
         recipient: Optional E.164 override.
         session_id: Optional short tag for correlating the reply.
     """
