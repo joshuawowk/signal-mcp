@@ -17,8 +17,8 @@ description: >
 # signal-josh
 
 Reach Josh on Signal when out-of-band notification is appropriate. The MCP server lives
-in `~/Repos/signal-mcp` and uses the host's existing `signal-cli` daemon (account
-+14013752241). Josh's personal number is preconfigured as the default recipient.
+in `~/Repos/signal-mcp` and uses the host's existing `signal-cli` daemon (account set via
+`SIGNAL_SENDER`). Josh's personal number is preconfigured as the default recipient.
 
 
 ## When to ping (decision tree)
@@ -75,7 +75,7 @@ Good — blocked:
 Good — permission:
 
     PERMISSION [claude-2026-05-19-a7b3]
-    Delete the snapshot `t630-2026-04-30` from the libvirt pool.
+    Delete the snapshot `vm-snapshot-2026-04-30` from the libvirt pool.
 
     Context:
     Frees ~80 GB. The snapshot is 18 days old; you said snapshots older

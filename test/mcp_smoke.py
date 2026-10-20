@@ -2,7 +2,7 @@
 tools/list, then exit. Reports per-tool annotations. Does NOT send any
 Signal messages. Run from the host (needs the docker group):
 
-    sg docker -c "python3 /home/jwowk/Repos/signal-mcp/test/mcp_smoke.py"
+    sg docker -c "python3 test/mcp_smoke.py"
 """
 import json, subprocess, sys
 
